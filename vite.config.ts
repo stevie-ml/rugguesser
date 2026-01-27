@@ -25,9 +25,20 @@ export default defineConfig(({ mode }) => {
                 body += chunk;
               }
 
-              let provenances: string[];
+              let items: { provenance: string; title: string }[];
               try {
-                provenances = JSON.parse(body).provenances;
+                const parsed = JSON.parse(body);
+                // Support both old format (provenances array) and new format (items array)
+                if (parsed.items) {
+                  items = parsed.items;
+                } else if (parsed.provenances) {
+                  items = parsed.provenances.map((p: string) => ({
+                    provenance: p,
+                    title: '',
+                  }));
+                } else {
+                  throw new Error('Missing items or provenances');
+                }
               } catch {
                 res.statusCode = 400;
                 res.end(JSON.stringify({ error: 'Invalid JSON body' }));
@@ -48,17 +59,19 @@ export default defineConfig(({ mode }) => {
               }
 
               try {
-                const prompt = `You are helping validate geographic provenances for a rug-guessing geography game. For each provenance string below, determine:
+                const prompt = `You are helping validate items for a rug-guessing geography game. For each item below, determine TWO things:
 
-1. Is it specific enough for a geography game? A specific city, town, district, or well-defined small region is GOOD (e.g., "Tabriz", "Isfahan", "Shirvan", "Kashan", "Hereke", "Oushak", "Agra", "Kuba", "Konya", "Bergama"). A large country, broad region, vague attribution, or ethnic/tribal name is NOT specific enough. Reject: countries/regions ("Turkey", "Iran", "Persia", "Caucasus", "Central Asia", "Middle East", "India", "China"), vague terms ("probably Turkish", "possibly Persian"), AND ethnic/tribal group names ("Kazak", "Turkmen", "Qashqai", "Bakhtiari", "Afshar", "Baluch", "Yomut", "Tekke", "Shahsavan", "Kurdish", "Lori", "Talish", "Dagestan"). Tribal names span large regions and are NOT specific locations.
+1. Is it actually a rug, carpet, or kilim? Check the title — if it describes something that is NOT a rug/carpet/kilim (e.g., a cap, hat, mirror, garment, bowl, tapestry panel, textile fragment, embroidery, shawl, etc.), mark isRug as false. Only actual rugs, carpets, kilims, and flatweaves are acceptable.
 
-2. If specific enough, provide the most specific identifiable place name and its approximate latitude/longitude coordinates.
+2. Is the provenance specific enough for a geography game? A specific city, town, district, or well-defined small region is GOOD (e.g., "Tabriz", "Isfahan", "Shirvan", "Kashan", "Hereke", "Oushak", "Agra", "Kuba", "Konya", "Bergama"). Reject: countries/regions ("Turkey", "Iran", "Persia", "Caucasus", "Central Asia", "Middle East", "India", "China"), vague terms ("probably Turkish", "possibly Persian"), AND ethnic/tribal group names ("Kazak", "Turkmen", "Qashqai", "Bakhtiari", "Afshar", "Baluch", "Yomut", "Tekke", "Shahsavan", "Kurdish", "Lori", "Talish", "Dagestan"). Tribal names span large regions and are NOT specific locations.
 
-Provenances:
-${provenances.map((p: string, i: number) => `${i}: ${p}`).join('\n')}
+If both isRug AND specific are true, provide the place name and coordinates.
+
+Items:
+${items.map((item, i: number) => `${i}: title="${item.title}" provenance="${item.provenance}"`).join('\n')}
 
 Respond ONLY with a valid JSON array (no markdown, no explanation). Each element must be:
-{"index": <number>, "specific": <boolean>, "placeName": "<name>" | null, "lat": <number> | null, "lng": <number> | null}`;
+{"index": <number>, "isRug": <boolean>, "specific": <boolean>, "placeName": "<name>" | null, "lat": <number> | null, "lng": <number> | null}`;
 
                 const response = await fetch(
                   'https://api.anthropic.com/v1/messages',

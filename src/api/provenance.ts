@@ -2,22 +2,26 @@ import { MuseumRug, ValidatedRug } from '../types';
 import { KNOWN_LOCATIONS, BROAD_TERMS } from './locations';
 
 /**
- * Validate provenance strings: try LLM first, fall back to heuristic matching.
- * Returns only rugs with specific-enough origins and valid coordinates.
+ * Validate provenance strings and verify items are actually rugs.
+ * Tries LLM first (checks both rug identity + provenance specificity),
+ * falls back to heuristic matching for provenance only.
  */
 export async function validateProvenances(
   rugs: MuseumRug[]
 ): Promise<ValidatedRug[]> {
   if (rugs.length === 0) return [];
 
-  const provenances = rugs.map((r) => r.provenance);
-
-  // Try LLM-based validation first
+  // Try LLM-based validation first — sends titles + provenances
   try {
+    const items = rugs.map((r) => ({
+      title: r.title,
+      provenance: r.provenance,
+    }));
+
     const res = await fetch('/api/check-provenance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provenances }),
+      body: JSON.stringify({ items }),
     });
 
     if (res.ok) {
@@ -25,7 +29,10 @@ export async function validateProvenances(
       if (data.results && Array.isArray(data.results)) {
         const validated: ValidatedRug[] = [];
         for (const r of data.results) {
+          // Must be a rug AND have specific provenance
+          const isRug = r.isRug !== false; // backwards-compat: old responses lack isRug
           if (
+            isRug &&
             r.specific &&
             r.lat != null &&
             r.lng != null &&

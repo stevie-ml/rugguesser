@@ -9,76 +9,78 @@ export async function fetchEuropeanaRugs(): Promise<MuseumRug[]> {
   }
 
   try {
+    // Run all queries in parallel for speed
     const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
-    for (const q of queries) {
-      try {
-        const res = await fetch(
+    const results = await Promise.allSettled(
+      queries.map((q) =>
+        fetch(
           `https://api.europeana.eu/record/v2/search.json?query=${q}&media=true&rows=50&wskey=${apiKey}`
-        );
-        if (!res.ok) continue;
-        const data = await res.json();
-        if (!data.items) continue;
+        ).then((r) => r.json())
+      )
+    );
 
-        for (const item of data.items) {
-          const id = item.id || '';
-          if (seenIds.has(id)) continue;
-          seenIds.add(id);
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      const data = result.value;
+      if (!data.items) continue;
 
-          const imageUrl =
-            item.edmIsShownBy?.[0] || item.edmPreview?.[0] || '';
-          if (!imageUrl) continue;
+      for (const item of data.items) {
+        const id = item.id || '';
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
 
-          const title = item.title?.[0] || 'Untitled';
-          const medium = item.dcType?.join(', ') || '';
+        const imageUrl =
+          item.edmIsShownBy?.[0] || item.edmPreview?.[0] || '';
+        if (!imageUrl) continue;
 
-          // Filter to actual rugs only
-          if (!isLikelyRug(title, medium, '')) continue;
+        const title = item.title?.[0] || 'Untitled';
+        const medium = item.dcType?.join(', ') || '';
 
-          // Extract place
-          const placeParts: string[] = [];
-          if (item.edmPlaceLabelLangAware?.en) {
-            placeParts.push(...item.edmPlaceLabelLangAware.en);
-          } else if (item.edmPlaceLabel) {
-            for (const label of item.edmPlaceLabel) {
-              if (typeof label === 'string') {
-                placeParts.push(label);
-              } else if (label?.def) {
-                placeParts.push(
-                  ...(Array.isArray(label.def)
-                    ? label.def
-                    : [label.def])
-                );
-              }
+        if (!isLikelyRug(title, medium, '')) continue;
+
+        const placeParts: string[] = [];
+        if (item.edmPlaceLabelLangAware?.en) {
+          placeParts.push(...item.edmPlaceLabelLangAware.en);
+        } else if (item.edmPlaceLabel) {
+          for (const label of item.edmPlaceLabel) {
+            if (typeof label === 'string') {
+              placeParts.push(label);
+            } else if (label?.def) {
+              placeParts.push(
+                ...(Array.isArray(label.def)
+                  ? label.def
+                  : [label.def])
+              );
             }
           }
-          if (!placeParts.length && item.dcCoverage) {
-            placeParts.push(...item.dcCoverage);
-          }
-          const place = placeParts.join(', ');
-          if (!place) continue;
-
-          rugs.push({
-            id: `europeana-${id}`,
-            source: 'europeana',
-            title,
-            imageUrl,
-            date: item.year?.[0]?.toString() || '',
-            medium,
-            dimensions: '',
-            culture: '',
-            provenance: place,
-            creditLine: item.dataProvider?.[0] || '',
-            museumUrl:
-              item.edmIsShownAt?.[0] || item.guid || '',
-            artist: item.dcCreator?.join(', ') || '',
-            description: item.dcDescription?.join(', ') || '',
-          });
         }
-      } catch {
-        // Individual query failures are OK
+        if (!placeParts.length && item.dcCoverage) {
+          placeParts.push(...item.dcCoverage);
+        }
+        const place = placeParts.join(', ');
+        if (!place) continue;
+
+        rugs.push({
+          id: `europeana-${id}`,
+          source: 'europeana',
+          title,
+          imageUrl,
+          date: item.year?.[0]?.toString() || '',
+          medium,
+          dimensions: '',
+          culture: '',
+          provenance: place,
+          creditLine: item.dataProvider?.[0] || '',
+          museumUrl:
+            item.edmIsShownAt?.[0] || item.guid || '',
+          artist: item.dcCreator?.join(', ') || '',
+          description: item.dcDescription?.join(', ') || '',
+        });
+
+        if (rugs.length >= 30) return rugs;
       }
     }
 

@@ -1,19 +1,13 @@
 /**
  * Determines whether a museum object is actually a rug, carpet, or kilim
- * (as opposed to metalwork, ceramics, etc. that merely reference carpet motifs).
+ * (as opposed to metalwork, ceramics, garments, caps, etc.).
  */
 
 const RUG_POSITIVE =
-  /\b(carpet|rug|kilim|kelim|flatweave|flat[\s-]weave|dhurrie|durrie|soumak|sumak|sumakh|verneh|cicim|tapestry|yastik|prayer\s+rug|runner|wagireh|pile\s+weav|floor\s+cover)\b/i;
-
-const TEXTILE_WITH_FIBER =
-  /\b(textile|woven|weaving|knotted)\b/i;
-
-const FIBER_TERMS =
-  /\b(wool|silk|cotton|jute|hemp)\b/i;
+  /\b(carpet|rug|kilim|kelim|flatweave|flat[\s-]weave|dhurrie|durrie|soumak|sumak|sumakh|verneh|cicim|yastik|prayer\s+rug|runner|wagireh|pile\s+weav|floor\s+cover)\b/i;
 
 const EXCLUDE_OBJECTS =
-  /\b(mirror|sword|dagger|blade|helmet|shield|bowl|vase|plate|dish|cup|bottle|jug|jar|tile[sd]?\b|coin|medal|brooch|ring|necklace|bracelet|earring|pendant|sculpture|statue|bust|figurin|painting|drawing|print|photograph|book|manuscript|furniture|chair|table|cabinet|chest|clock|watch|lamp|candlestick|chandelier|garment|dress|robe|coat|shirt|hat|shoe|boot|pillow|cushion|bag\b|saddlebag|curtain|cover(?!ing)|panel\b|border\b|fragment of a border)\b/i;
+  /\b(mirror|sword|dagger|blade|helmet|shield|bowl|vase|plate|dish|cup|bottle|jug|jar|tile[sd]?\b|coin|medal|brooch|ring|necklace|bracelet|earring|pendant|sculpture|statue|bust|figurin|painting|drawing|print|photograph|book|manuscript|furniture|chair|table|cabinet|chest|clock|watch|lamp|candlestick|chandelier|garment|dress|robe|coat|shirt|hat|shoe|boot|pillow|cushion|bag\b|saddlebag|curtain|cover(?!ing)|panel\b|border\b|fragment of a border|cap\b|headwear|headdress|head\s*cover|turban|bonnet|skullcap|fez\b|hood\b|cloak|shawl|scarf|belt\b|sash\b|apron|sleeve|collar\b|cuff|glove|mitten|stocking|sock|blanket|bedspread|quilt|towel|napkin|tablecloth|tent\b(?!\s*rug)|canopy|saddle\b|harness|bridle|holster|pouch\b|wallet|purse|tapestry)\b/i;
 
 export function isLikelyRug(
   title: string,
@@ -31,12 +25,8 @@ export function isLikelyRug(
     if (!titleHasRug) return false;
   }
 
-  // Direct match: any field mentions rug/carpet/kilim
+  // Direct match: any field mentions rug/carpet/kilim explicitly
   if (RUG_POSITIVE.test(allText)) return true;
-
-  // Indirect match: classified as textile AND made of fiber materials
-  if (TEXTILE_WITH_FIBER.test(classification) && FIBER_TERMS.test(medium))
-    return true;
 
   // Object name match (Met API provides this)
   if (objectName && /\b(carpet|rug|kilim)\b/i.test(objectName)) return true;
