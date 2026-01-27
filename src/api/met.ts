@@ -1,25 +1,41 @@
 import { MuseumRug } from '../types';
+import { isLikelyRug } from './rug-filter';
 
 const BASE = 'https://collectionapi.metmuseum.org/public/collection/v1';
 
 export async function fetchMetRugs(): Promise<MuseumRug[]> {
   try {
-    const searchRes = await fetch(
-      `${BASE}/search?q=carpet+rug&hasImages=true`
+    // Search with multiple terms to maximize coverage
+    const searchTerms = ['carpet', 'rug', 'kilim'];
+    const allIds = new Set<number>();
+
+    await Promise.all(
+      searchTerms.map(async (term) => {
+        try {
+          const res = await fetch(
+            `${BASE}/search?q=${term}&hasImages=true`
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.objectIDs) {
+            data.objectIDs.forEach((id: number) => allIds.add(id));
+          }
+        } catch {
+          // Individual search failures are OK
+        }
+      })
     );
-    if (!searchRes.ok) return [];
-    const searchData = await searchRes.json();
 
-    if (!searchData.objectIDs?.length) return [];
+    if (allIds.size === 0) return [];
 
-    // Random subset to keep request count reasonable
-    const ids = shuffle(searchData.objectIDs).slice(0, 60);
+    // Pick a random sample of 100 from the combined IDs
+    const idsArray = shuffle([...allIds]).slice(0, 100);
 
     const rugs: MuseumRug[] = [];
     const batchSize = 10;
 
-    for (let i = 0; i < ids.length; i += batchSize) {
-      const batch = ids.slice(i, i + batchSize);
+    for (let i = 0; i < idsArray.length; i += batchSize) {
+      const batch = idsArray.slice(i, i + batchSize);
       const results = await Promise.allSettled(
         batch.map((id) =>
           fetch(`${BASE}/objects/${id}`).then((r) => r.json())
@@ -31,7 +47,18 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
         const obj = result.value;
         if (!obj.primaryImage) continue;
 
-        // Build provenance string from geography fields
+        // Filter: only actual rugs/carpets/kilims
+        if (
+          !isLikelyRug(
+            obj.title || '',
+            obj.medium || '',
+            obj.classification || '',
+            obj.objectName || ''
+          )
+        )
+          continue;
+
+        // Build provenance from geography fields
         const geoFields = [
           obj.city,
           obj.region,

@@ -4,6 +4,7 @@ import { fetchClevelandRugs } from './cleveland';
 import { fetchAicRugs } from './aic';
 import { fetchSmithsonianRugs } from './smithsonian';
 import { fetchEuropeanaRugs } from './europeana';
+import { fetchVaRugs } from './va';
 import { validateProvenances } from './provenance';
 
 export async function buildRugPool(
@@ -11,27 +12,31 @@ export async function buildRugPool(
 ): Promise<ValidatedRug[]> {
   onProgress('Searching museum collections for rugs...');
 
-  // Fetch from all 5 sources in parallel
-  const [met, cleveland, aic, smithsonian, europeana] =
+  // Fetch from all 6 sources in parallel
+  const [met, cleveland, aic, smithsonian, europeana, va] =
     await Promise.allSettled([
       fetchMetRugs().then((r) => {
-        onProgress(`The Met: found ${r.length} candidates`);
+        onProgress(`The Met: found ${r.length} rugs`);
         return r;
       }),
       fetchClevelandRugs().then((r) => {
-        onProgress(`Cleveland Museum: found ${r.length} candidates`);
+        onProgress(`Cleveland Museum: found ${r.length} rugs`);
         return r;
       }),
       fetchAicRugs().then((r) => {
-        onProgress(`Art Institute of Chicago: found ${r.length} candidates`);
+        onProgress(`Art Institute of Chicago: found ${r.length} rugs`);
         return r;
       }),
       fetchSmithsonianRugs().then((r) => {
-        onProgress(`Smithsonian: found ${r.length} candidates`);
+        onProgress(`Smithsonian: found ${r.length} rugs`);
         return r;
       }),
       fetchEuropeanaRugs().then((r) => {
-        onProgress(`Europeana: found ${r.length} candidates`);
+        onProgress(`Europeana: found ${r.length} rugs`);
+        return r;
+      }),
+      fetchVaRugs().then((r) => {
+        onProgress(`Victoria & Albert: found ${r.length} rugs`);
         return r;
       }),
     ]);
@@ -42,13 +47,14 @@ export async function buildRugPool(
     ...(aic.status === 'fulfilled' ? aic.value : []),
     ...(smithsonian.status === 'fulfilled' ? smithsonian.value : []),
     ...(europeana.status === 'fulfilled' ? europeana.value : []),
+    ...(va.status === 'fulfilled' ? va.value : []),
   ];
 
   onProgress(
-    `Total: ${allRugs.length} candidates. Checking provenance specificity...`
+    `Total: ${allRugs.length} rugs found. Checking provenance specificity...`
   );
 
-  // Validate in batches to avoid overwhelming the LLM
+  // Validate in batches
   const batchSize = 25;
   const validated: ValidatedRug[] = [];
 
@@ -63,7 +69,7 @@ export async function buildRugPool(
 
   onProgress(`Pool ready: ${validated.length} rugs with specific origins`);
 
-  // Deduplicate by title (museums sometimes share records)
+  // Deduplicate by title
   const seen = new Set<string>();
   const deduped = validated.filter((r) => {
     const key = r.title.toLowerCase().trim();

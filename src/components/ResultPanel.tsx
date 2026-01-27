@@ -6,6 +6,7 @@ const SOURCE_NAMES: Record<string, string> = {
   aic: 'Art Institute of Chicago',
   smithsonian: 'Smithsonian Institution',
   europeana: 'Europeana',
+  va: 'Victoria and Albert Museum',
 };
 
 interface ResultPanelProps {

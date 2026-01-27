@@ -1,6 +1,6 @@
 export interface MuseumRug {
   id: string;
-  source: 'met' | 'cleveland' | 'aic' | 'smithsonian' | 'europeana';
+  source: 'met' | 'cleveland' | 'aic' | 'smithsonian' | 'europeana' | 'va';
   title: string;
   imageUrl: string;
   date: string;
