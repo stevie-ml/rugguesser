@@ -14,13 +14,15 @@ import { isNewWorldRug } from './locations';
 const MAX_NEW_WORLD = 1;
 /** Probability that any New World rug is included at all (0–1) */
 const NEW_WORLD_INCLUSION_PROB = 0.3;
+/** Cap per source when assembling the combined pool for balance */
+const MAX_PER_SOURCE = 15;
 
 export async function buildRugPool(
   onProgress: (msg: string) => void
 ): Promise<ValidatedRug[]> {
   onProgress('Searching museum collections for rugs...');
 
-  // Fetch from all 8 sources in parallel
+  // Fetch from all 8 sources in parallel — each source already caps at 30
   const [met, cleveland, aic, smithsonian, europeana, va, dpla, wikidata] =
     await Promise.allSettled([
       fetchMetRugs().then((r) => {
@@ -57,34 +59,38 @@ export async function buildRugPool(
       }),
     ]);
 
-  // Separate Wikidata rugs (already have coordinates) from others
-  const wikidataRugs: MuseumRug[] =
-    wikidata.status === 'fulfilled' ? wikidata.value : [];
+  // Extract results, shuffle each source, and cap per source for balance
+  const cap = (r: PromiseSettledResult<MuseumRug[]>) =>
+    r.status === 'fulfilled' ? shuffle(r.value).slice(0, MAX_PER_SOURCE) : [];
 
+  // Separate Wikidata (pre-validated coordinates) from others
+  const wikidataRugs = cap(wikidata);
   const otherRugs: MuseumRug[] = [
-    ...(met.status === 'fulfilled' ? met.value : []),
-    ...(cleveland.status === 'fulfilled' ? cleveland.value : []),
-    ...(aic.status === 'fulfilled' ? aic.value : []),
-    ...(smithsonian.status === 'fulfilled' ? smithsonian.value : []),
-    ...(europeana.status === 'fulfilled' ? europeana.value : []),
-    ...(va.status === 'fulfilled' ? va.value : []),
-    ...(dpla.status === 'fulfilled' ? dpla.value : []),
+    ...cap(met),
+    ...cap(cleveland),
+    ...cap(aic),
+    ...cap(smithsonian),
+    ...cap(europeana),
+    ...cap(va),
+    ...cap(dpla),
   ];
 
+  const totalRaw = otherRugs.length + wikidataRugs.length;
   onProgress(
-    `Total: ${otherRugs.length + wikidataRugs.length} rugs found. Checking provenance specificity...`
+    `Total: ${totalRaw} rugs (balanced). Validating provenance...`
   );
 
-  // Validate non-Wikidata rugs in batches
-  const batchSize = 25;
+  // Validate non-Wikidata rugs — use heuristic first (fast), LLM only if needed
   const validated: ValidatedRug[] = [];
 
+  // Send all at once to provenance validator (which batches internally if using LLM)
+  const batchSize = 50;
   for (let i = 0; i < otherRugs.length; i += batchSize) {
     const batch = otherRugs.slice(i, i + batchSize);
     const results = await validateProvenances(batch);
     validated.push(...results);
     onProgress(
-      `Checked ${Math.min(i + batchSize, otherRugs.length)}/${otherRugs.length} — ${validated.length} valid so far`
+      `Validated ${Math.min(i + batchSize, otherRugs.length)}/${otherRugs.length} — ${validated.length} valid`
     );
   }
 
@@ -117,24 +123,20 @@ export async function buildRugPool(
     return true;
   });
 
-  // Apply New World depression: separate into Old World and New World pools
+  // Apply New World depression
   const oldWorld = deduped.filter((r) => !isNewWorldRug(r));
   const newWorld = deduped.filter((r) => isNewWorldRug(r));
 
-  // Shuffle both pools
   const shuffledOld = shuffle(oldWorld);
   const shuffledNew = shuffle(newWorld);
 
-  // Decide how many New World rugs to include (0 or 1, probabilistic)
   let newWorldCount = 0;
   if (shuffledNew.length > 0 && Math.random() < NEW_WORLD_INCLUSION_PROB) {
     newWorldCount = Math.min(MAX_NEW_WORLD, shuffledNew.length);
   }
 
-  // Build final pool: mostly Old World with at most 1 New World rug
   const finalPool = [...shuffledOld];
   if (newWorldCount > 0) {
-    // Insert New World rug(s) at random positions
     for (let i = 0; i < newWorldCount; i++) {
       const pos = Math.floor(Math.random() * (finalPool.length + 1));
       finalPool.splice(pos, 0, shuffledNew[i]);

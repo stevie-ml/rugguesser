@@ -5,7 +5,7 @@ const BASE = 'https://collectionapi.metmuseum.org/public/collection/v1';
 
 export async function fetchMetRugs(): Promise<MuseumRug[]> {
   try {
-    // Search with multiple terms to maximize coverage
+    // Search with multiple terms in parallel
     const searchTerms = ['carpet', 'rug', 'kilim'];
     const allIds = new Set<number>();
 
@@ -28,11 +28,12 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
 
     if (allIds.size === 0) return [];
 
-    // Pick a random sample of 100 from the combined IDs
-    const idsArray = shuffle([...allIds]).slice(0, 100);
+    // Pick a random sample — keep small for speed
+    const idsArray = shuffle([...allIds]).slice(0, 50);
 
     const rugs: MuseumRug[] = [];
-    const batchSize = 10;
+    // Fetch in parallel batches of 25
+    const batchSize = 25;
 
     for (let i = 0; i < idsArray.length; i += batchSize) {
       const batch = idsArray.slice(i, i + batchSize);
@@ -47,7 +48,6 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
         const obj = result.value;
         if (!obj.primaryImage) continue;
 
-        // Filter: only actual rugs/carpets/kilims
         if (
           !isLikelyRug(
             obj.title || '',
@@ -58,7 +58,6 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
         )
           continue;
 
-        // Build provenance from geography fields
         const geoFields = [
           obj.city,
           obj.region,
@@ -87,6 +86,8 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
             .filter(Boolean)
             .join(' — '),
         });
+
+        if (rugs.length >= 30) return rugs;
       }
     }
 
