@@ -1,78 +1,99 @@
 import { MuseumRug } from '../types';
+import { isLikelyRug } from './rug-filter';
 
 export async function fetchSmithsonianRugs(): Promise<MuseumRug[]> {
-  const apiKey = import.meta.env.VITE_SMITHSONIAN_API_KEY;
-  if (!apiKey) {
-    console.info('Smithsonian API key not set, skipping');
-    return [];
-  }
+  // Use provided key, or fall back to the public DEMO_KEY (rate-limited)
+  const apiKey =
+    import.meta.env.VITE_SMITHSONIAN_API_KEY || 'DEMO_KEY';
 
   try {
-    const res = await fetch(
-      `https://api.si.edu/openaccess/api/v1.0/search?q=rug+carpet+textile&api_key=${apiKey}&rows=50`
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-
-    if (!data.response?.rows) return [];
-
+    const queries = ['carpet', 'rug', 'kilim'];
+    const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
-    for (const row of data.response.rows) {
-      const content = row.content;
-      if (!content) continue;
+    for (const q of queries) {
+      try {
+        const res = await fetch(
+          `https://api.si.edu/openaccess/api/v1.0/search?q=${q}&api_key=${apiKey}&rows=50`
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (!data.response?.rows) continue;
 
-      const descriptive = content.descriptiveNonRepeating;
-      const freetext = content.freetext;
+        for (const row of data.response.rows) {
+          if (seenIds.has(row.id)) continue;
+          seenIds.add(row.id);
 
-      // Extract image
-      const media = descriptive?.online_media?.media;
-      const imageUrl =
-        media?.[0]?.content || media?.[0]?.thumbnail || '';
-      if (!imageUrl) continue;
+          const content = row.content;
+          if (!content) continue;
 
-      // Extract place info
-      const place =
-        freetext?.place?.map((p: any) => p.content).join(', ') ||
-        content.indexedStructured?.place?.join(', ') ||
-        '';
-      if (!place) continue;
+          const descriptive = content.descriptiveNonRepeating;
+          const freetext = content.freetext;
 
-      const title =
-        descriptive?.title?.content || content.title || 'Untitled';
+          // Extract image
+          const media = descriptive?.online_media?.media;
+          const imageUrl =
+            media?.[0]?.content || media?.[0]?.thumbnail || '';
+          if (!imageUrl) continue;
 
-      rugs.push({
-        id: `smithsonian-${row.id}`,
-        source: 'smithsonian',
-        title,
-        imageUrl,
-        date:
-          freetext?.date?.map((d: any) => d.content).join(', ') ||
-          '',
-        medium:
-          freetext?.physicalDescription
-            ?.map((p: any) => p.content)
-            .join(', ') || '',
-        dimensions:
-          freetext?.dimensions
-            ?.map((d: any) => d.content)
-            .join(', ') || '',
-        culture:
-          content.indexedStructured?.culture?.join(', ') || '',
-        provenance: place,
-        creditLine:
-          freetext?.creditLine
-            ?.map((c: any) => c.content)
-            .join(', ') || '',
-        museumUrl:
-          descriptive?.record_link || descriptive?.guid || '',
-        artist:
-          freetext?.name?.map((n: any) => n.content).join(', ') ||
-          '',
-        description:
-          freetext?.notes?.map((n: any) => n.content).join(', ') ||
-          '',
-      });
+          // Extract title
+          const title =
+            descriptive?.title?.content || content.title || 'Untitled';
+
+          // Filter to rugs only
+          const physDesc =
+            freetext?.physicalDescription
+              ?.map((p: any) => p.content)
+              .join(', ') || '';
+          const objectType =
+            content.indexedStructured?.object_type?.join(', ') || '';
+          if (!isLikelyRug(title, physDesc, objectType)) continue;
+
+          // Extract place info
+          const place =
+            freetext?.place
+              ?.map((p: any) => p.content)
+              .join(', ') ||
+            content.indexedStructured?.place?.join(', ') ||
+            '';
+          if (!place) continue;
+
+          rugs.push({
+            id: `smithsonian-${row.id}`,
+            source: 'smithsonian',
+            title,
+            imageUrl,
+            date:
+              freetext?.date
+                ?.map((d: any) => d.content)
+                .join(', ') || '',
+            medium: physDesc,
+            dimensions:
+              freetext?.dimensions
+                ?.map((d: any) => d.content)
+                .join(', ') || '',
+            culture:
+              content.indexedStructured?.culture?.join(', ') || '',
+            provenance: place,
+            creditLine:
+              freetext?.creditLine
+                ?.map((c: any) => c.content)
+                .join(', ') || '',
+            museumUrl:
+              descriptive?.record_link || descriptive?.guid || '',
+            artist:
+              freetext?.name
+                ?.map((n: any) => n.content)
+                .join(', ') || '',
+            description:
+              freetext?.notes
+                ?.map((n: any) => n.content)
+                .join(', ') || '',
+          });
+        }
+      } catch {
+        // Individual query failures are OK (e.g., DEMO_KEY rate limit)
+      }
     }
 
     return rugs;
