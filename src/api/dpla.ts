@@ -15,10 +15,11 @@ export async function fetchDplaRugs(): Promise<MuseumRug[]> {
   const rugs: MuseumRug[] = [];
 
   // Run all queries in parallel for speed
+  // Use Vite proxy (/api/dpla -> api.dp.la) to avoid CORS issues
   const results = await Promise.allSettled(
     queries.map((q) =>
       fetch(
-        `https://api.dp.la/v2/items?q=${encodeURIComponent(q)}&sourceResource.type=image&page_size=50&api_key=${apiKey}`
+        `/api/dpla/items?q=${encodeURIComponent(q)}&page_size=50&api_key=${apiKey}`
       ).then((r) => r.json())
     )
   );

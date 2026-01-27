@@ -8,7 +8,7 @@ import { fetchVaRugs } from './va';
 import { fetchDplaRugs } from './dpla';
 import { fetchWikidataRugs } from './wikidata';
 import { validateProvenances } from './provenance';
-import { isNewWorldRug } from './locations';
+import { isNewWorldRug, BROAD_TERMS } from './locations';
 
 /** Maximum number of New World rugs allowed per game */
 const MAX_NEW_WORLD = 1;
@@ -95,12 +95,22 @@ export async function buildRugPool(
   }
 
   // Wikidata rugs already have validated coordinates from SPARQL
+  // But we still need to check provenance against BROAD_TERMS
   for (const rug of wikidataRugs) {
     const wd = rug as MuseumRug & {
       _wikidataLat?: number;
       _wikidataLng?: number;
     };
     if (wd._wikidataLat != null && wd._wikidataLng != null) {
+      // Check provenance isn't too broad
+      const provText = rug.provenance.toLowerCase().trim();
+      if (BROAD_TERMS.includes(provText)) continue;
+      const provWords = provText.split(/[\s,;.()]+/).filter(Boolean);
+      const allBroad = provWords.every(
+        (w) => BROAD_TERMS.includes(w) || w.length <= 2 || /^\d+$/.test(w)
+      );
+      if (allBroad && provWords.length > 0) continue;
+
       validated.push({
         ...rug,
         location: {
@@ -143,7 +153,48 @@ export async function buildRugPool(
     }
   }
 
-  return finalPool;
+  // Final LLM verification — make sure each selected rug is actually a rug
+  onProgress('Running final rug verification...');
+  const verifiedPool = await verifyRugsWithLLM(finalPool);
+  onProgress(`Verified: ${verifiedPool.length} confirmed rugs`);
+
+  return verifiedPool;
+}
+
+/**
+ * Final LLM check: sends titles to /api/verify-rugs and removes non-rugs.
+ * Falls back gracefully if LLM is unavailable.
+ */
+async function verifyRugsWithLLM(
+  rugs: ValidatedRug[]
+): Promise<ValidatedRug[]> {
+  if (rugs.length === 0) return rugs;
+
+  try {
+    const res = await fetch('/api/verify-rugs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titles: rugs.map((r) => r.title) }),
+    });
+
+    if (!res.ok) return rugs; // fallback: keep all
+
+    const data = await res.json();
+    if (!data.results || !Array.isArray(data.results)) return rugs;
+
+    const verified: ValidatedRug[] = [];
+    for (const r of data.results) {
+      if (r.isRug !== false && r.index >= 0 && r.index < rugs.length) {
+        verified.push(rugs[r.index]);
+      }
+    }
+
+    // If LLM rejected too many (less than 5 left), fall back to full pool
+    return verified.length >= 5 ? verified : rugs;
+  } catch {
+    // LLM unavailable — keep all rugs
+    return rugs;
+  }
 }
 
 function shuffle<T>(arr: T[]): T[] {

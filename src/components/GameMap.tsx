@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import 'maplibre-gl';
+import '@maplibre/maplibre-gl-leaflet';
 
 interface GameMapProps {
   onGuess: (lat: number, lng: number) => void;
@@ -48,16 +51,39 @@ export default function GameMap({
       zoomControl: true,
     });
 
-    // CartoDB Voyager tiles — clean English/Latin-script labels
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20,
+    // Use MapLibre GL vector tiles with CARTO Voyager style — forced English labels
+    const glLayer = (L as any).maplibreGL({
+      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    });
+    glLayer.addTo(map);
+
+    // Force all text labels to English
+    const mlMap = glLayer.getMaplibreMap();
+    mlMap.on('styledata', () => {
+      try {
+        const style = mlMap.getStyle();
+        if (!style || !style.layers) return;
+        for (const layer of style.layers) {
+          if (
+            layer.type === 'symbol' &&
+            layer.layout &&
+            layer.layout['text-field']
+          ) {
+            mlMap.setLayoutProperty(layer.id, 'text-field', [
+              'coalesce',
+              ['get', 'name_en'],
+              ['get', 'name:en'],
+              ['get', 'name_int'],
+              ['get', 'name'],
+            ]);
+          }
+        }
+      } catch {
+        // style not ready yet, will retry on next styledata event
       }
-    ).addTo(map);
+    });
 
     map.on('click', (e: L.LeafletMouseEvent) => {
       if (!disabledRef.current) {

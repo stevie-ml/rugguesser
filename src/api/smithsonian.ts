@@ -11,10 +11,11 @@ export async function fetchSmithsonianRugs(): Promise<MuseumRug[]> {
     const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
+    // Use Vite proxy (/api/smithsonian -> api.si.edu) to avoid CORS issues
     const results = await Promise.allSettled(
       queries.map((q) =>
         fetch(
-          `https://api.si.edu/openaccess/api/v1.0/search?q=${q}&api_key=${apiKey}&rows=40`
+          `/api/smithsonian/search?q=${q}&api_key=${apiKey}&rows=40`
         ).then((r) => r.json())
       )
     );
