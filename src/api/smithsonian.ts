@@ -2,20 +2,17 @@ import { MuseumRug } from '../types';
 import { isLikelyRug } from './rug-filter';
 
 export async function fetchSmithsonianRugs(): Promise<MuseumRug[]> {
-  const apiKey =
-    import.meta.env.VITE_SMITHSONIAN_API_KEY || 'DEMO_KEY';
-
   try {
-    // Run all queries in parallel for speed
+    // Use server-side middleware (/api/smithsonian-fetch) to avoid CORS
+    // API key is read server-side from .env
     const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
-    // Use Vite proxy (/api/smithsonian -> api.si.edu) to avoid CORS issues
     const results = await Promise.allSettled(
       queries.map((q) =>
         fetch(
-          `/api/smithsonian/search?q=${q}&api_key=${apiKey}&rows=40`
+          `/api/smithsonian-fetch?q=${encodeURIComponent(q)}&rows=40`
         ).then((r) => r.json())
       )
     );

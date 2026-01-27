@@ -5,17 +5,18 @@ const BASE = 'https://api.vam.ac.uk/v2';
 
 export async function fetchVaRugs(): Promise<MuseumRug[]> {
   try {
-    // Run all queries in parallel for speed
+    // Use random pages so we get different results each game
     const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
     const results = await Promise.allSettled(
-      queries.map((q) =>
-        fetch(
-          `${BASE}/objects/search?q=${q}&images_exist=true&page_size=45`
-        ).then((r) => r.json())
-      )
+      queries.map((q) => {
+        const page = Math.floor(Math.random() * 5) + 1;
+        return fetch(
+          `${BASE}/objects/search?q=${q}&images_exist=true&page_size=45&page=${page}`
+        ).then((r) => r.json());
+      })
     );
 
     for (const result of results) {

@@ -14,8 +14,10 @@ import { isNewWorldRug, BROAD_TERMS } from './locations';
 const MAX_NEW_WORLD = 1;
 /** Probability that any New World rug is included at all (0–1) */
 const NEW_WORLD_INCLUSION_PROB = 0.3;
-/** Cap per source when assembling the combined pool for balance */
+/** Cap per museum source when assembling the combined pool for balance */
 const MAX_PER_SOURCE = 15;
+/** Higher cap for Wikidata — user prefers this source */
+const MAX_WIKIDATA = 30;
 
 export async function buildRugPool(
   onProgress: (msg: string) => void
@@ -60,11 +62,12 @@ export async function buildRugPool(
     ]);
 
   // Extract results, shuffle each source, and cap per source for balance
-  const cap = (r: PromiseSettledResult<MuseumRug[]>) =>
-    r.status === 'fulfilled' ? shuffle(r.value).slice(0, MAX_PER_SOURCE) : [];
+  const cap = (r: PromiseSettledResult<MuseumRug[]>, max = MAX_PER_SOURCE) =>
+    r.status === 'fulfilled' ? shuffle(r.value).slice(0, max) : [];
 
   // Separate Wikidata (pre-validated coordinates) from others
-  const wikidataRugs = cap(wikidata);
+  // Give Wikidata a higher cap — user wants more from it
+  const wikidataRugs = cap(wikidata, MAX_WIKIDATA);
   const otherRugs: MuseumRug[] = [
     ...cap(met),
     ...cap(cleveland),

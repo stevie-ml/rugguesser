@@ -5,16 +5,14 @@ import { BROAD_TERMS } from './locations';
 /**
  * Fetch rugs/carpets from Wikidata + Wikimedia Commons.
  * Uses SPARQL to find items with images and specific geographic origin.
- * This is a supplementary source — use other APIs first when possible.
  */
 export async function fetchWikidataRugs(): Promise<MuseumRug[]> {
-  // Label-based query: finds more items than strict P31 type matching
-  // NOTE: "tapestry" and "silk" removed per user request — only actual rugs/carpets/kilims
   const sparql = `
 SELECT DISTINCT ?item ?itemLabel ?image ?origin ?originLabel ?coords ?countryLabel ?inception WHERE {
   ?item rdfs:label ?label .
   FILTER(LANG(?label) = "en")
   FILTER(REGEX(?label, "\\\\b(carpet|rug|kilim|flatweave|prayer rug)\\\\b", "i"))
+  FILTER(!REGEX(?label, "\\\\b(portrait|still life|painting|drawing|print|sculpture|photograph|scene|interior|landscape|miniature|tapestry|embroidery|dealer|merchant|seller|weaver)\\\\b", "i"))
   ?item wdt:P18 ?image .
   {
     ?item wdt:P1071 ?origin .
@@ -22,12 +20,17 @@ SELECT DISTINCT ?item ?itemLabel ?image ?origin ?originLabel ?coords ?countryLab
     ?item wdt:P495 ?origin .
   }
   ?origin wdt:P625 ?coords .
+  # Exclude ITEMS that are paintings, drawings, prints, photos (not actual rugs)
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q3305213 . }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q11060274 . }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q93184 . }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q125191 . }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q860861 . }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q5 . }
+  # Exclude ORIGINS that are countries or very broad regions
   FILTER NOT EXISTS { ?origin wdt:P31 wd:Q6256 . }
   FILTER NOT EXISTS { ?origin wdt:P31 wd:Q3024240 . }
   FILTER NOT EXISTS { ?origin wdt:P31 wd:Q3624078 . }
-  FILTER NOT EXISTS { ?origin wdt:P31 wd:Q5 . }
-  FILTER NOT EXISTS { ?origin wdt:P31 wd:Q3305213 . }
-  FILTER NOT EXISTS { ?origin wdt:P31 wd:Q15334 . }
   FILTER NOT EXISTS { ?origin wdt:P31 wd:Q82794 . }
   FILTER NOT EXISTS { ?origin wdt:P31 wd:Q36784 . }
   OPTIONAL { ?origin wdt:P17 ?country . }
@@ -71,7 +74,7 @@ LIMIT 500
       const originLabel = b.originLabel?.value || '';
       if (!originLabel) continue;
 
-      // Check title against rug filter — skip non-rugs
+      // Check title against rug filter — skip non-rugs (catches paintings, etc.)
       if (!isLikelyRug(title, '', '')) continue;
 
       // Reject broad provenance terms (Anatolia, Caucasus, China, etc.)
@@ -110,8 +113,6 @@ LIMIT 500
         museumUrl: `https://www.wikidata.org/wiki/${qid}`,
         artist: '',
         description: '',
-        // Wikidata already provides validated coordinates, so we store them
-        // for use during provenance validation
         _wikidataLat: lat,
         _wikidataLng: lng,
       } as MuseumRug & { _wikidataLat: number; _wikidataLng: number });

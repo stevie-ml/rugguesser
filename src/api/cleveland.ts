@@ -5,17 +5,18 @@ const BASE = 'https://openaccess-api.clevelandart.org/api';
 
 export async function fetchClevelandRugs(): Promise<MuseumRug[]> {
   try {
-    // Run all queries in parallel for speed
+    // Use random skip values so we get different results each game
     const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<number>();
     const rugs: MuseumRug[] = [];
 
     const results = await Promise.allSettled(
-      queries.map((q) =>
-        fetch(`${BASE}/artworks/?q=${q}&has_image=1&limit=40`).then((r) =>
-          r.json()
-        )
-      )
+      queries.map((q) => {
+        const skip = Math.floor(Math.random() * 60);
+        return fetch(
+          `${BASE}/artworks/?q=${q}&has_image=1&limit=40&skip=${skip}`
+        ).then((r) => r.json());
+      })
     );
 
     for (const result of results) {

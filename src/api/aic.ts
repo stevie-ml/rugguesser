@@ -5,17 +5,18 @@ const BASE = 'https://api.artic.edu/api/v1';
 
 export async function fetchAicRugs(): Promise<MuseumRug[]> {
   try {
-    // Run all queries in parallel for speed
+    // Use random pages so we get different results each game
     const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<number>();
     const rugs: MuseumRug[] = [];
 
     const results = await Promise.allSettled(
-      queries.map((q) =>
-        fetch(
-          `${BASE}/artworks/search?q=${q}&fields=id,title,image_id,date_display,artist_display,place_of_origin,medium_display,dimensions,credit_line,classification_title,style_title,description,thumbnail&limit=60`
-        ).then((r) => r.json())
-      )
+      queries.map((q) => {
+        const page = Math.floor(Math.random() * 3) + 1;
+        return fetch(
+          `${BASE}/artworks/search?q=${q}&fields=id,title,image_id,date_display,artist_display,place_of_origin,medium_display,dimensions,credit_line,classification_title,style_title,description,thumbnail&limit=60&page=${page}`
+        ).then((r) => r.json());
+      })
     );
 
     for (const result of results) {

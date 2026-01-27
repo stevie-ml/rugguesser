@@ -42,26 +42,120 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    server: {
-      proxy: {
-        '/api/dpla': {
-          target: 'https://api.dp.la',
-          changeOrigin: true,
-          rewrite: (path: string) => path.replace(/^\/api\/dpla/, '/v2'),
-        },
-        '/api/smithsonian': {
-          target: 'https://api.si.edu',
-          changeOrigin: true,
-          rewrite: (path: string) =>
-            path.replace(/^\/api\/smithsonian/, '/openaccess/api/v1.0'),
-        },
-      },
-    },
     plugins: [
       react(),
       {
-        name: 'llm-proxy',
+        name: 'api-middleware',
         configureServer(server) {
+          // DPLA server-side proxy — avoids CORS
+          server.middlewares.use(
+            '/api/dpla-fetch',
+            async (req: IncomingMessage, res: ServerResponse) => {
+              const reqUrl = new URL(req.url || '/', 'http://localhost');
+              const q = reqUrl.searchParams.get('q') || 'carpet';
+              const pageSize = reqUrl.searchParams.get('page_size') || '50';
+              const page = reqUrl.searchParams.get('page') || '1';
+              const apiKey =
+                env.VITE_DPLA_API_KEY || '';
+
+              if (!apiKey) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ docs: [], error: 'No DPLA API key' }));
+                return;
+              }
+
+              try {
+                const dplaUrl = `https://api.dp.la/v2/items?q=${encodeURIComponent(q)}&page_size=${pageSize}&page=${page}&api_key=${apiKey}`;
+                console.log(`[DPLA] Fetching: ${dplaUrl.replace(apiKey, 'KEY')}`);
+                const response = await fetch(dplaUrl);
+                if (!response.ok) {
+                  const errText = await response.text();
+                  console.error(`[DPLA] Error ${response.status}: ${errText}`);
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      docs: [],
+                      error: `DPLA API ${response.status}`,
+                    })
+                  );
+                  return;
+                }
+                const data = await response.json();
+                console.log(
+                  `[DPLA] Got ${data.docs?.length || 0} docs for "${q}"`
+                );
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+              } catch (err: any) {
+                console.error('[DPLA] Fetch error:', err.message);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                  JSON.stringify({ docs: [], error: err.message })
+                );
+              }
+            }
+          );
+
+          // Smithsonian server-side proxy — avoids CORS
+          server.middlewares.use(
+            '/api/smithsonian-fetch',
+            async (req: IncomingMessage, res: ServerResponse) => {
+              const reqUrl = new URL(req.url || '/', 'http://localhost');
+              const q = reqUrl.searchParams.get('q') || 'carpet';
+              const rows = reqUrl.searchParams.get('rows') || '40';
+              const apiKey =
+                env.VITE_SMITHSONIAN_API_KEY || '';
+
+              if (!apiKey) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                  JSON.stringify({
+                    response: { rows: [] },
+                    error: 'No Smithsonian API key',
+                  })
+                );
+                return;
+              }
+
+              try {
+                const siUrl = `https://api.si.edu/openaccess/api/v1.0/search?q=${encodeURIComponent(q)}&api_key=${apiKey}&rows=${rows}`;
+                console.log(
+                  `[Smithsonian] Fetching: ${siUrl.replace(apiKey, 'KEY')}`
+                );
+                const response = await fetch(siUrl);
+                if (!response.ok) {
+                  const errText = await response.text();
+                  console.error(
+                    `[Smithsonian] Error ${response.status}: ${errText}`
+                  );
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      response: { rows: [] },
+                      error: `Smithsonian API ${response.status}`,
+                    })
+                  );
+                  return;
+                }
+                const data = await response.json();
+                console.log(
+                  `[Smithsonian] Got ${data.response?.rows?.length || 0} rows for "${q}"`
+                );
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+              } catch (err: any) {
+                console.error('[Smithsonian] Fetch error:', err.message);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                  JSON.stringify({
+                    response: { rows: [] },
+                    error: err.message,
+                  })
+                );
+              }
+            }
+          );
+
           // Provenance validation endpoint
           server.middlewares.use(
             '/api/check-provenance',
@@ -109,7 +203,7 @@ export default defineConfig(({ mode }) => {
               try {
                 const prompt = `You are helping validate items for a rug-guessing geography game. For each item below, determine TWO things:
 
-1. Is it actually a rug, carpet, or kilim? Check the title — if it describes something that is NOT a rug/carpet/kilim (e.g., a cap, hat, mirror, garment, bowl, tapestry panel, textile fragment, embroidery, shawl, silk cap, silk hat, etc.), mark isRug as false. Only actual rugs, carpets, kilims, and flatweaves are acceptable.
+1. Is it actually a rug, carpet, or kilim? Check the title — if it describes something that is NOT a rug/carpet/kilim (e.g., a cap, hat, mirror, garment, bowl, tapestry panel, textile fragment, embroidery, shawl, silk cap, silk hat, painting, portrait, still life, photograph, etc.), mark isRug as false. Only actual rugs, carpets, kilims, and flatweaves are acceptable.
 
 2. Is the provenance specific enough for a geography game? A specific city, town, district, or well-defined small region is GOOD (e.g., "Tabriz", "Isfahan", "Shirvan", "Kashan", "Hereke", "Oushak", "Agra", "Kuba", "Konya", "Bergama"). Reject: countries/regions ("Turkey", "Iran", "Persia", "Caucasus", "Central Asia", "Middle East", "India", "China", "Anatolia", "Egypt"), vague terms ("probably Turkish", "possibly Persian"), AND ethnic/tribal group names ("Kazak", "Turkmen", "Qashqai", "Bakhtiari", "Afshar", "Baluch", "Yomut", "Tekke", "Shahsavan", "Kurdish", "Lori", "Talish", "Dagestan"). Tribal names span large regions and are NOT specific locations.
 
@@ -148,7 +242,7 @@ Respond ONLY with a valid JSON array (no markdown, no explanation). Each element
             }
           );
 
-          // Final rug verification endpoint — checks selected rugs are actually rugs
+          // Final rug verification endpoint
           server.middlewares.use(
             '/api/verify-rugs',
             async (req: IncomingMessage, res: ServerResponse) => {
@@ -174,7 +268,6 @@ Respond ONLY with a valid JSON array (no markdown, no explanation). Each element
               const apiKey = env.ANTHROPIC_API_KEY;
               if (!apiKey) {
                 res.setHeader('Content-Type', 'application/json');
-                // No API key — skip verification, assume all are rugs
                 res.end(
                   JSON.stringify({
                     results: titles.map((_: string, i: number) => ({
@@ -190,6 +283,7 @@ Respond ONLY with a valid JSON array (no markdown, no explanation). Each element
                 const prompt = `You are a rug expert verifying items for a rug-guessing game. For each item title below, determine if it is ACTUALLY a rug, carpet, kilim, or flatweave.
 
 REJECT anything that is NOT a rug/carpet/kilim/flatweave, including:
+- Paintings, portraits, still lifes, drawings, prints, photographs
 - Caps, hats, headwear, clothing, garments
 - Tapestries, tapestry panels, wall hangings
 - Textile fragments, silk panels, embroideries
@@ -215,7 +309,6 @@ Respond ONLY with a valid JSON array (no markdown, no explanation). Each element
                     JSON.stringify({ results: JSON.parse(jsonMatch[0]) })
                   );
                 } else {
-                  // Can't parse — assume all are rugs
                   res.end(
                     JSON.stringify({
                       results: titles.map((_: string, i: number) => ({
@@ -228,7 +321,6 @@ Respond ONLY with a valid JSON array (no markdown, no explanation). Each element
               } catch (err: any) {
                 console.error('LLM verify error:', err);
                 res.setHeader('Content-Type', 'application/json');
-                // On error, assume all are rugs
                 res.end(
                   JSON.stringify({
                     results: titles.map((_: string, i: number) => ({

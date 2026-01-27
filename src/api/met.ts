@@ -28,8 +28,8 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
 
     if (allIds.size === 0) return [];
 
-    // Pick a random sample — keep small for speed
-    const idsArray = shuffle([...allIds]).slice(0, 50);
+    // Pick a random sample — bigger sample = more variety per game
+    const idsArray = shuffle([...allIds]).slice(0, 80);
 
     const rugs: MuseumRug[] = [];
     // Fetch in parallel batches of 25
