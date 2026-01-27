@@ -7,6 +7,8 @@ const SOURCE_NAMES: Record<string, string> = {
   smithsonian: 'Smithsonian Institution',
   europeana: 'Europeana',
   va: 'Victoria and Albert Museum',
+  dpla: 'Digital Public Library of America',
+  wikidata: 'Wikidata / Wikimedia Commons',
 };
 
 interface ResultPanelProps {
