@@ -31,18 +31,12 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   feraghan: { lat: 33.84, lng: 49.5 },
   ferahan: { lat: 33.84, lng: 49.5 },
   serapi: { lat: 38.15, lng: 47.17 },
-  bakhtiari: { lat: 32.36, lng: 50.6 },
-  afshar: { lat: 30.28, lng: 57.08 },
-  qashqai: { lat: 29.59, lng: 52.58 },
-  lori: { lat: 33.49, lng: 48.36 },
-  luristan: { lat: 33.49, lng: 48.36 },
   veramin: { lat: 35.32, lng: 51.65 },
   varamin: { lat: 35.32, lng: 51.65 },
   tehran: { lat: 35.69, lng: 51.39 },
   joshegan: { lat: 33.5, lng: 51.58 },
   joshaghan: { lat: 33.5, lng: 51.58 },
   yazd: { lat: 31.9, lng: 54.37 },
-  khorasan: { lat: 36.3, lng: 59.6 },
   ardabil: { lat: 38.25, lng: 48.3 },
   ardebil: { lat: 38.25, lng: 48.3 },
   moud: { lat: 33.37, lng: 58.85 },
@@ -50,6 +44,7 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   abadeh: { lat: 31.16, lng: 52.65 },
   semnan: { lat: 35.58, lng: 53.4 },
   meshkin: { lat: 38.39, lng: 47.68 },
+  qazvin: { lat: 36.27, lng: 50.0 },
   // Turkey
   hereke: { lat: 40.79, lng: 29.63 },
   oushak: { lat: 38.68, lng: 29.41 },
@@ -79,20 +74,19 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   bursa: { lat: 40.19, lng: 29.06 },
   manisa: { lat: 38.61, lng: 27.43 },
   denizli: { lat: 37.77, lng: 29.09 },
-  // Caucasus specific
+  kumkapi: { lat: 41.0, lng: 28.96 },
+  selendi: { lat: 38.74, lng: 28.87 },
+  hacibektash: { lat: 38.94, lng: 34.56 },
+  // Caucasus specific — only named towns/districts, not ethnic groups
   shirvan: { lat: 40.78, lng: 48.92 },
-  kazak: { lat: 41.23, lng: 44.46 },
   karabagh: { lat: 39.82, lng: 46.77 },
   karabakh: { lat: 39.82, lng: 46.77 },
   baku: { lat: 40.41, lng: 49.87 },
   kuba: { lat: 41.36, lng: 48.51 },
   moghan: { lat: 39.65, lng: 48.0 },
-  talish: { lat: 38.72, lng: 48.85 },
   gendje: { lat: 40.68, lng: 46.36 },
   ganja: { lat: 40.68, lng: 46.36 },
   derbend: { lat: 42.06, lng: 48.3 },
-  daghestan: { lat: 42.98, lng: 47.5 },
-  dagestan: { lat: 42.98, lng: 47.5 },
   lenkoran: { lat: 38.75, lng: 48.85 },
   seichur: { lat: 41.3, lng: 48.3 },
   chichi: { lat: 41.4, lng: 47.9 },
@@ -102,18 +96,13 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   yerevan: { lat: 40.18, lng: 44.51 },
   tbilisi: { lat: 41.69, lng: 44.8 },
   tiflis: { lat: 41.69, lng: 44.8 },
-  // Central Asia
+  qazax: { lat: 41.09, lng: 45.37 },
+  // Central Asia — only named cities/towns, not tribal names
   bukhara: { lat: 39.77, lng: 64.42 },
   bokhara: { lat: 39.77, lng: 64.42 },
   samarkand: { lat: 39.65, lng: 66.96 },
   herat: { lat: 34.34, lng: 62.2 },
   kabul: { lat: 34.53, lng: 69.17 },
-  yomut: { lat: 39.95, lng: 53.06 },
-  yomud: { lat: 39.95, lng: 53.06 },
-  tekke: { lat: 37.95, lng: 58.38 },
-  salor: { lat: 37.6, lng: 61.83 },
-  ersari: { lat: 37.6, lng: 65.8 },
-  chodor: { lat: 42.0, lng: 59.0 },
   ashgabat: { lat: 37.96, lng: 58.33 },
   merv: { lat: 37.66, lng: 62.17 },
   khotan: { lat: 37.11, lng: 79.93 },
@@ -122,6 +111,7 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   kashgar: { lat: 39.47, lng: 75.99 },
   beshir: { lat: 37.93, lng: 64.0 },
   beshr: { lat: 37.93, lng: 64.0 },
+  bukan: { lat: 36.52, lng: 46.21 },
   // South Asia
   agra: { lat: 27.18, lng: 78.02 },
   jaipur: { lat: 26.92, lng: 75.79 },
@@ -144,6 +134,7 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   cairo: { lat: 30.04, lng: 31.24 },
   tunis: { lat: 36.81, lng: 10.18 },
   kairouan: { lat: 35.68, lng: 10.1 },
+  arraiolos: { lat: 38.72, lng: -7.98 },
   // Europe
   aubusson: { lat: 45.96, lng: 2.17 },
   savonnerie: { lat: 48.83, lng: 2.22 },
@@ -152,9 +143,6 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   // Americas
   navajo: { lat: 36.1, lng: -109.52 },
   oaxaca: { lat: 17.07, lng: -96.73 },
-  // Baluch regions
-  baluch: { lat: 29.5, lng: 60.0 },
-  baluchistan: { lat: 29.5, lng: 60.0 },
   // Tibet
   tibet: { lat: 29.65, lng: 91.1 },
   lhasa: { lat: 29.65, lng: 91.1 },
@@ -171,10 +159,12 @@ export const KNOWN_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   axminster: { lat: 50.78, lng: -3.0 },
   kidderminster: { lat: 52.39, lng: -2.25 },
   wilton: { lat: 51.08, lng: -1.86 },
+  ghazir: { lat: 34.02, lng: 35.67 },
 };
 
 /** Provenance terms that are too broad for a geography game */
 export const BROAD_TERMS: string[] = [
+  // Country/region-level terms
   'turkey',
   'iran',
   'persia',
@@ -211,11 +201,7 @@ export const BROAD_TERMS: string[] = [
   'unidentified',
   'islamic',
   'ottoman',
-  'turkmen',
-  'turkoman',
   'turkmenistan',
-  'kurdish',
-  'kurdistan',
   'probably',
   'possibly',
   'attributed',
@@ -244,4 +230,95 @@ export const BROAD_TERMS: string[] = [
   'british',
   'america',
   'american',
+  'khorasan',
+  'luristan',
+  'azerbaijan',
+  // Ethnic and tribal terms — too broad, span large regions
+  'kazak',
+  'kazakh',
+  'kazaks',
+  'turkmen',
+  'turkoman',
+  'turkoman',
+  'kurdish',
+  'kurdistan',
+  'baluch',
+  'baluchi',
+  'baloch',
+  'baluchistan',
+  'qashqai',
+  "qashqa'i",
+  'kashkai',
+  'afshar',
+  'afshaar',
+  'bakhtiari',
+  'bakhtyari',
+  'shahsavan',
+  'shahsevan',
+  'yomut',
+  'yomud',
+  'yomuts',
+  'tekke',
+  'tekke',
+  'salor',
+  'saryk',
+  'ersari',
+  'chodor',
+  'chuval',
+  'talish',
+  'lori',
+  'luri',
+  'daghestan',
+  'dagestan',
+  'arab',
+  'bedouin',
+  'berber',
+  'kashmir',
+  'kashmiri',
+  'gujarati',
+  'gujarat',
 ];
+
+/**
+ * Detect whether a provenance string refers to a New World (Americas) origin.
+ * Used to depress the number of New World rugs in the game.
+ */
+export const NEW_WORLD_TERMS: string[] = [
+  'navajo',
+  'navaho',
+  'oaxaca',
+  'zapotec',
+  'maya',
+  'mayan',
+  'aztec',
+  'mexican',
+  'mexico',
+  'peru',
+  'peruvian',
+  'bolivian',
+  'bolivia',
+  'chilean',
+  'chile',
+  'guatemalan',
+  'guatemala',
+  'american indian',
+  'native american',
+  'southwest',
+  'southwestern',
+  'new mexico',
+  'arizona',
+  'pueblo',
+  'hopi',
+  'chimayo',
+  'rio grande',
+];
+
+export function isNewWorldRug(rug: {
+  provenance: string;
+  culture: string;
+  title: string;
+}): boolean {
+  const text =
+    `${rug.provenance} ${rug.culture} ${rug.title}`.toLowerCase();
+  return NEW_WORLD_TERMS.some((term) => text.includes(term));
+}

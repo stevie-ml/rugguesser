@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
               try {
                 const prompt = `You are helping validate geographic provenances for a rug-guessing geography game. For each provenance string below, determine:
 
-1. Is it specific enough for a geography game? A specific city, town, district, or well-defined small region is GOOD (e.g., "Tabriz", "Isfahan", "Shirvan", "Kashan", "Hereke", "Oushak", "Agra", "Kuba", "Konya", "Bergama"). A large country, broad region, or vague attribution is NOT specific enough (e.g., "Turkey", "Iran", "Persia", "Caucasus", "Central Asia", "Middle East", "India", "China", "probably Turkish").
+1. Is it specific enough for a geography game? A specific city, town, district, or well-defined small region is GOOD (e.g., "Tabriz", "Isfahan", "Shirvan", "Kashan", "Hereke", "Oushak", "Agra", "Kuba", "Konya", "Bergama"). A large country, broad region, vague attribution, or ethnic/tribal name is NOT specific enough. Reject: countries/regions ("Turkey", "Iran", "Persia", "Caucasus", "Central Asia", "Middle East", "India", "China"), vague terms ("probably Turkish", "possibly Persian"), AND ethnic/tribal group names ("Kazak", "Turkmen", "Qashqai", "Bakhtiari", "Afshar", "Baluch", "Yomut", "Tekke", "Shahsavan", "Kurdish", "Lori", "Talish", "Dagestan"). Tribal names span large regions and are NOT specific locations.
 
 2. If specific enough, provide the most specific identifiable place name and its approximate latitude/longitude coordinates.
 
