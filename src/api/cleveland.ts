@@ -6,7 +6,7 @@ const BASE = 'https://openaccess-api.clevelandart.org/api';
 export async function fetchClevelandRugs(): Promise<MuseumRug[]> {
   try {
     // Run all queries in parallel for speed
-    const queries = ['carpet', 'rug', 'kilim', 'textile weaving'];
+    const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<number>();
     const rugs: MuseumRug[] = [];
 
