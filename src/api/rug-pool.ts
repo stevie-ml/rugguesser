@@ -13,6 +13,7 @@ import { isNewWorldRug, BROAD_TERMS } from './locations';
 /**
  * Preload image and verify it actually loads.
  * Returns true if image loads successfully, false otherwise.
+ * Note: We don't set crossOrigin as it causes CORS errors with museum images.
  */
 function validateImage(url: string, timeout = 8000): Promise<boolean> {
   return new Promise((resolve) => {
@@ -29,7 +30,7 @@ function validateImage(url: string, timeout = 8000): Promise<boolean> {
       clearTimeout(timer);
       resolve(false);
     };
-    img.crossOrigin = 'anonymous';
+    // Don't set crossOrigin - it causes CORS errors with external images
     img.src = url;
   });
 }
