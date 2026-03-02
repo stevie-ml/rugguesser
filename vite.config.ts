@@ -42,6 +42,11 @@ async function callClaude(
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
+  // Fallback API keys (these are public/free-tier keys)
+  const DPLA_KEY = env.VITE_DPLA_API_KEY || '1f08a529e95fc1d69ab6e6796adcad5f';
+  const EUROPEANA_KEY = env.VITE_EUROPEANA_API_KEY || 'guitieldri';
+  const SMITHSONIAN_KEY = env.VITE_SMITHSONIAN_API_KEY || 'ERogSRkC8Qg3wuhqpyc9FBryVkbhFwe1SwtxfJXa';
+
   return {
     plugins: [
       react(),
@@ -57,14 +62,7 @@ export default defineConfig(({ mode }) => {
               const q = reqUrl.searchParams.get('q') || 'carpet';
               const pageSize = reqUrl.searchParams.get('page_size') || '50';
               const page = reqUrl.searchParams.get('page') || '1';
-              const apiKey =
-                env.VITE_DPLA_API_KEY || '';
-
-              if (!apiKey) {
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ docs: [], error: 'No DPLA API key' }));
-                return;
-              }
+              const apiKey = DPLA_KEY;
 
               try {
                 const dplaUrl = `https://api.dp.la/v2/items?q=${encodeURIComponent(q)}&page_size=${pageSize}&page=${page}&api_key=${apiKey}`;
@@ -165,13 +163,7 @@ export default defineConfig(({ mode }) => {
               const reqUrl = new URL(req.url || '/', 'http://localhost');
               const q = reqUrl.searchParams.get('q') || 'carpet';
               const rows = reqUrl.searchParams.get('rows') || '50';
-              const apiKey = env.VITE_EUROPEANA_API_KEY || '';
-
-              if (!apiKey) {
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ items: [], error: 'No Europeana API key' }));
-                return;
-              }
+              const apiKey = EUROPEANA_KEY;
 
               try {
                 const europeanaUrl = `https://api.europeana.eu/record/v2/search.json?query=${encodeURIComponent(q)}&media=true&rows=${rows}&wskey=${apiKey}`;
@@ -203,19 +195,7 @@ export default defineConfig(({ mode }) => {
               const reqUrl = new URL(req.url || '/', 'http://localhost');
               const q = reqUrl.searchParams.get('q') || 'carpet';
               const rows = reqUrl.searchParams.get('rows') || '40';
-              const apiKey =
-                env.VITE_SMITHSONIAN_API_KEY || '';
-
-              if (!apiKey) {
-                res.setHeader('Content-Type', 'application/json');
-                res.end(
-                  JSON.stringify({
-                    response: { rows: [] },
-                    error: 'No Smithsonian API key',
-                  })
-                );
-                return;
-              }
+              const apiKey = SMITHSONIAN_KEY;
 
               try {
                 const siUrl = `https://api.si.edu/openaccess/api/v1.0/search?q=${encodeURIComponent(q)}&api_key=${apiKey}&rows=${rows}`;
