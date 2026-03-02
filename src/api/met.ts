@@ -1,20 +1,16 @@
 import { MuseumRug } from '../types';
 import { isLikelyRug } from './rug-filter';
 
-const BASE = 'https://collectionapi.metmuseum.org/public/collection/v1';
-
 export async function fetchMetRugs(): Promise<MuseumRug[]> {
   try {
-    // Search with multiple terms in parallel
+    // Search with multiple terms in parallel using server-side proxy
     const searchTerms = ['carpet', 'rug', 'kilim'];
     const allIds = new Set<number>();
 
     await Promise.all(
       searchTerms.map(async (term) => {
         try {
-          const res = await fetch(
-            `${BASE}/search?q=${term}&hasImages=true`
-          );
+          const res = await fetch(`/api/met-search?q=${encodeURIComponent(term)}`);
           if (!res.ok) return;
           const data = await res.json();
           if (data.objectIDs) {
@@ -39,7 +35,7 @@ export async function fetchMetRugs(): Promise<MuseumRug[]> {
       const batch = idsArray.slice(i, i + batchSize);
       const results = await Promise.allSettled(
         batch.map((id) =>
-          fetch(`${BASE}/objects/${id}`).then((r) => r.json())
+          fetch(`/api/met-object?id=${id}`).then((r) => r.json())
         )
       );
 

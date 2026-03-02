@@ -97,6 +97,103 @@ export default defineConfig(({ mode }) => {
             }
           );
 
+          // Met server-side proxy
+          server.middlewares.use(
+            '/api/met-search',
+            async (req: IncomingMessage, res: ServerResponse) => {
+              const reqUrl = new URL(req.url || '/', 'http://localhost');
+              const q = reqUrl.searchParams.get('q') || 'carpet';
+
+              try {
+                const metUrl = `https://collectionapi.metmuseum.org/public/collection/v1/search?q=${encodeURIComponent(q)}&hasImages=true`;
+                console.log(`[Met] Search: ${metUrl}`);
+                const response = await fetch(metUrl);
+                if (!response.ok) {
+                  const errText = await response.text();
+                  console.error(`[Met] Error ${response.status}: ${errText}`);
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ objectIDs: [], error: `Met API ${response.status}` }));
+                  return;
+                }
+                const data = await response.json();
+                console.log(`[Met] Found ${data.objectIDs?.length || 0} IDs for "${q}"`);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+              } catch (err: any) {
+                console.error('[Met] Search error:', err.message);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ objectIDs: [], error: err.message }));
+              }
+            }
+          );
+
+          server.middlewares.use(
+            '/api/met-object',
+            async (req: IncomingMessage, res: ServerResponse) => {
+              const reqUrl = new URL(req.url || '/', 'http://localhost');
+              const id = reqUrl.searchParams.get('id');
+
+              if (!id) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Missing id' }));
+                return;
+              }
+
+              try {
+                const response = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`);
+                if (!response.ok) {
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: `Met API ${response.status}` }));
+                  return;
+                }
+                const data = await response.json();
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+              } catch (err: any) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: err.message }));
+              }
+            }
+          );
+
+          // Europeana server-side proxy
+          server.middlewares.use(
+            '/api/europeana-fetch',
+            async (req: IncomingMessage, res: ServerResponse) => {
+              const reqUrl = new URL(req.url || '/', 'http://localhost');
+              const q = reqUrl.searchParams.get('q') || 'carpet';
+              const rows = reqUrl.searchParams.get('rows') || '50';
+              const apiKey = env.VITE_EUROPEANA_API_KEY || '';
+
+              if (!apiKey) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ items: [], error: 'No Europeana API key' }));
+                return;
+              }
+
+              try {
+                const europeanaUrl = `https://api.europeana.eu/record/v2/search.json?query=${encodeURIComponent(q)}&media=true&rows=${rows}&wskey=${apiKey}`;
+                console.log(`[Europeana] Fetching: ${europeanaUrl.replace(apiKey, 'KEY')}`);
+                const response = await fetch(europeanaUrl);
+                if (!response.ok) {
+                  const errText = await response.text();
+                  console.error(`[Europeana] Error ${response.status}: ${errText}`);
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ items: [], error: `Europeana API ${response.status}` }));
+                  return;
+                }
+                const data = await response.json();
+                console.log(`[Europeana] Got ${data.items?.length || 0} items for "${q}"`);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+              } catch (err: any) {
+                console.error('[Europeana] Fetch error:', err.message);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ items: [], error: err.message }));
+              }
+            }
+          );
+
           // Smithsonian server-side proxy — avoids CORS
           server.middlewares.use(
             '/api/smithsonian-fetch',

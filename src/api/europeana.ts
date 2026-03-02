@@ -2,23 +2,15 @@ import { MuseumRug } from '../types';
 import { isLikelyRug } from './rug-filter';
 
 export async function fetchEuropeanaRugs(): Promise<MuseumRug[]> {
-  const apiKey = import.meta.env.VITE_EUROPEANA_API_KEY;
-  if (!apiKey) {
-    console.info('Europeana API key not set, skipping');
-    return [];
-  }
-
   try {
-    // Run all queries in parallel for speed
+    // Run all queries in parallel using server-side proxy
     const queries = ['carpet', 'rug', 'kilim'];
     const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
     const results = await Promise.allSettled(
       queries.map((q) =>
-        fetch(
-          `https://api.europeana.eu/record/v2/search.json?query=${q}&media=true&rows=50&wskey=${apiKey}`
-        ).then((r) => r.json())
+        fetch(`/api/europeana-fetch?q=${encodeURIComponent(q)}&rows=50`).then((r) => r.json())
       )
     );
 

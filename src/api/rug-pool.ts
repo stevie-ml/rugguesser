@@ -10,6 +10,51 @@ import { fetchWikidataRugs } from './wikidata';
 import { validateProvenances } from './provenance';
 import { isNewWorldRug, BROAD_TERMS } from './locations';
 
+/**
+ * Preload image and verify it actually loads.
+ * Returns true if image loads successfully, false otherwise.
+ */
+function validateImage(url: string, timeout = 8000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timer = setTimeout(() => {
+      img.src = '';
+      resolve(false);
+    }, timeout);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img.naturalWidth > 0 && img.naturalHeight > 0);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+  });
+}
+
+/**
+ * Validate images in batches to avoid overwhelming the browser.
+ * Returns rugs that have valid, loadable images.
+ */
+async function filterByValidImages<T extends { imageUrl: string }>(
+  items: T[],
+  batchSize = 10
+): Promise<T[]> {
+  const valid: T[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map((item) => validateImage(item.imageUrl))
+    );
+    for (let j = 0; j < batch.length; j++) {
+      if (results[j]) valid.push(batch[j]);
+    }
+  }
+  return valid;
+}
+
 /** Maximum number of New World rugs allowed per game */
 const MAX_NEW_WORLD = 1;
 /** Probability that any New World rug is included at all (0–1) */
@@ -161,7 +206,12 @@ export async function buildRugPool(
   const verifiedPool = await verifyRugsWithLLM(finalPool);
   onProgress(`Verified: ${verifiedPool.length} confirmed rugs`);
 
-  return verifiedPool;
+  // Validate images load successfully — filter out broken images
+  onProgress('Validating images...');
+  const withValidImages = await filterByValidImages(verifiedPool.slice(0, 20));
+  onProgress(`Images validated: ${withValidImages.length} with loadable images`);
+
+  return withValidImages;
 }
 
 /**
