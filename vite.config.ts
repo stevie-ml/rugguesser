@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { IncomingMessage, ServerResponse } from 'http';
+import { resolve } from 'path';
 
 async function readBody(req: IncomingMessage): Promise<string> {
   let body = '';
@@ -335,5 +336,13 @@ Respond ONLY with a valid JSON array (no markdown, no explanation). Each element
         },
       },
     ],
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'index.html'),
+          debug: resolve(__dirname, 'debug.html'),
+        },
+      },
+    },
   };
 });
