@@ -9,17 +9,26 @@ export async function fetchDplaRugs(): Promise<MuseumRug[]> {
   try {
     // Use server-side middleware (/api/dpla-fetch) to avoid CORS
     // API key is read server-side from .env
+    console.log('[DPLA Client] Starting fetch...');
     const results = await Promise.allSettled(
       queries.map((q) =>
         fetch(
           `/api/dpla-fetch?q=${encodeURIComponent(q)}&page_size=50`
-        ).then((r) => r.json())
+        ).then((r) => {
+          console.log(`[DPLA Client] Response for "${q}": ${r.status}`);
+          return r.json();
+        })
       )
     );
 
+    console.log('[DPLA Client] Got results:', results.length);
     for (const result of results) {
-      if (result.status !== 'fulfilled') continue;
+      if (result.status !== 'fulfilled') {
+        console.log('[DPLA Client] Rejected:', result.reason);
+        continue;
+      }
       const data = result.value;
+      console.log('[DPLA Client] Data:', data.docs?.length || 0, 'docs, error:', data.error);
       if (!data.docs || !Array.isArray(data.docs)) continue;
 
       for (const doc of data.docs) {

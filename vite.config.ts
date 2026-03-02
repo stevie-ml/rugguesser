@@ -52,6 +52,7 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use(
             '/api/dpla-fetch',
             async (req: IncomingMessage, res: ServerResponse) => {
+              console.log('[DPLA] Proxy hit! URL:', req.url);
               const reqUrl = new URL(req.url || '/', 'http://localhost');
               const q = reqUrl.searchParams.get('q') || 'carpet';
               const pageSize = reqUrl.searchParams.get('page_size') || '50';
@@ -160,6 +161,7 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use(
             '/api/europeana-fetch',
             async (req: IncomingMessage, res: ServerResponse) => {
+              console.log('[Europeana] Proxy hit! URL:', req.url);
               const reqUrl = new URL(req.url || '/', 'http://localhost');
               const q = reqUrl.searchParams.get('q') || 'carpet';
               const rows = reqUrl.searchParams.get('rows') || '50';

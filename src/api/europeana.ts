@@ -8,15 +8,24 @@ export async function fetchEuropeanaRugs(): Promise<MuseumRug[]> {
     const seenIds = new Set<string>();
     const rugs: MuseumRug[] = [];
 
+    console.log('[Europeana Client] Starting fetch...');
     const results = await Promise.allSettled(
       queries.map((q) =>
-        fetch(`/api/europeana-fetch?q=${encodeURIComponent(q)}&rows=50`).then((r) => r.json())
+        fetch(`/api/europeana-fetch?q=${encodeURIComponent(q)}&rows=50`).then((r) => {
+          console.log(`[Europeana Client] Response for "${q}": ${r.status}`);
+          return r.json();
+        })
       )
     );
 
+    console.log('[Europeana Client] Got results:', results.length);
     for (const result of results) {
-      if (result.status !== 'fulfilled') continue;
+      if (result.status !== 'fulfilled') {
+        console.log('[Europeana Client] Rejected:', result.reason);
+        continue;
+      }
       const data = result.value;
+      console.log('[Europeana Client] Data:', data.items?.length || 0, 'items, error:', data.error);
       if (!data.items) continue;
 
       for (const item of data.items) {
